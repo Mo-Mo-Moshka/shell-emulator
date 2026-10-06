@@ -11,12 +11,14 @@ from emulator.parser import ParseError, parse
 class Shell:
     """Состояние сеанса оболочки и выполнение команд."""
 
-    def __init__(self, vfs_name=DEFAULT_VFS_NAME, logger=None):
+    def __init__(self, vfs_name=DEFAULT_VFS_NAME, logger=None, vfs=None):
         """Создать сеанс для VFS с указанным именем.
 
-        logger — журнал вызовов команд (CsvLogger или NullLogger).
+        logger — журнал вызовов команд (CsvLogger или NullLogger),
+        vfs — загруженная VFS (None, если VFS не загружена).
         """
-        self.vfs_name = vfs_name
+        self.vfs_name = vfs.name if vfs is not None else vfs_name
+        self.vfs = vfs
         self.cwd = "/"
         self.logger = logger if logger is not None else NullLogger()
 

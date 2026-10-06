@@ -1,12 +1,15 @@
 """Команды эмулятора.
 
 Каждая команда — функция ``handler(shell, args)``, которая возвращает
-CommandResult или бросает CommandError. На этапе 1 команды ls и cd
-являются заглушками: они только выводят своё имя и аргументы.
+CommandResult или бросает CommandError. Команды ls и cd пока являются
+заглушками: они только выводят своё имя и аргументы. Служебная
+команда vfs-info выводит информацию о загруженной VFS.
 """
 
 from dataclasses import dataclass
 from typing import Optional
+
+from emulator.vfs import describe_vfs
 
 MAX_CD_ARGS = 1
 MAX_EXIT_ARGS = 1
@@ -73,8 +76,18 @@ def cmd_exit(shell, args):
     return CommandResult(exit_code=code % EXIT_STATUS_RANGE)
 
 
+def cmd_vfs_info(shell, args):
+    """Служебная команда: имя VFS, хеш SHA-256 её данных и размер."""
+    if args:
+        raise CommandError("too many arguments")
+    if shell.vfs is None:
+        raise CommandError("no VFS loaded (use --vfs PATH)")
+    return CommandResult(output="\n".join(describe_vfs(shell.vfs)))
+
+
 COMMANDS = {
     "ls": cmd_ls,
     "cd": cmd_cd,
     "exit": cmd_exit,
+    "vfs-info": cmd_vfs_info,
 }

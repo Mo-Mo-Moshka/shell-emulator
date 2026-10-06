@@ -1,3 +1,6 @@
 * text=auto
 *.sh text eol=lf
 *.bat text eol=crlf
+
+# Sample VFS data must be byte-exact on every OS (SHA-256 in vfs-info)
+examples/vfs/** -text
