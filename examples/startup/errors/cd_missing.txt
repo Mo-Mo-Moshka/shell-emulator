@@ -1,0 +1,4 @@
+# Ошибка cd: папки не существует (остановка на строке 3).
+cd /home/user
+cd ../nobody
+ls never-run

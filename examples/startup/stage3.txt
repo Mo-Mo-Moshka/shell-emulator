@@ -5,14 +5,11 @@
 # Служебная команда: имя VFS и хеш SHA-256 её данных
 vfs-info
 
-# Заглушки ls и cd (логика появится на этапе 4)
+# Работа с VFS: ls и cd
 ls
 ls -l /home/user
 cd "/home/user/my docs"
 cd /
-
-# Переменные окружения реальной ОС, кавычки и экранирование
-ls $HOME '$HOME' "${HOME}/docs" \$HOME
 
 # Ошибка: vfs-info не принимает аргументов
 vfs-info --verbose

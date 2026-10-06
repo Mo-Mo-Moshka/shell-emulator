@@ -17,6 +17,8 @@
    команд в CSV, стартовый скрипт.
 3. **VFS** — виртуальная файловая система из папки на диске, работа
    в памяти, служебная команда `vfs-info`.
+4. **Основные команды** — настоящие `ls` и `cd`, новые команды `rev`,
+   `date`, `tac`.
 
 ## Структура репозитория
 
@@ -26,7 +28,11 @@ src/
   emulator/
     config.py           параметры командной строки
     parser.py           разбор строки и подстановка переменных окружения
-    commands.py         реализация команд
+    commands/           реализация команд
+      base.py           результат, ошибки, разбор опций, доступ к VFS
+      navigation.py     ls, cd
+      text.py           rev, tac
+      system.py         exit, date, vfs-info
     shell.py            ядро: выполнение строки, приглашение, журнал
     logger.py           журнал вызовов команд (CSV)
     script.py           чтение и выполнение стартового скрипта
@@ -139,15 +145,52 @@ VFS не удалось загрузить, ошибка выводится кр
 
 ### Команды
 
-| Команда        | Описание                                                |
-|----------------|---------------------------------------------------------|
-| `ls [арг...]`  | заглушка: выводит имя команды и список аргументов       |
-| `cd [каталог]` | заглушка: выводит имя и аргументы; больше одного аргумента — ошибка |
-| `exit [N]`     | закрывает эмулятор с кодом `N` (по умолчанию 0)         |
-| `vfs-info`     | служебная: имя VFS, путь-источник, хеш SHA-256, число папок и файлов, размер |
+| Команда                   | Описание                                      |
+|---------------------------|-----------------------------------------------|
+| `ls [-a] [-l] [путь...]`  | содержимое папок или сведения о файлах        |
+| `cd [путь \| -]`          | сменить текущую папку                         |
+| `rev файл...`             | строки файлов с символами в обратном порядке  |
+| `tac файл...`             | строки каждого файла в обратном порядке       |
+| `date [-u] [+ФОРМАТ]`     | текущие дата и время                          |
+| `exit [N]`                | закрыть эмулятор с кодом `N` (по умолчанию 0) |
+| `vfs-info`                | служебная: имя VFS, путь-источник, хеш SHA-256, число папок и файлов, размер |
 
-Неизвестная команда выводит `<имя>: command not found`. `vfs-info`
-без загруженной VFS выводит ошибку `no VFS loaded`.
+Общие правила, как в UNIX:
+
+* пути абсолютные (`/etc/hostname`) или относительные текущей папки
+  (`docs/a.txt`), поддерживаются `.` и `..`;
+* опции можно объединять (`-la`) и ставить в любом месте; после `--`
+  аргументы опциями не считаются; неизвестная опция —
+  `invalid option -- 'x'`;
+* если один из нескольких путей ошибочен, остальные всё равно
+  обрабатываются, а ошибка выводится отдельно;
+* команды, работающие с VFS, без загруженной VFS выводят
+  `no VFS loaded`; неизвестная команда — `<имя>: command not found`.
+
+**`ls`**. Без аргументов — текущая папка. Имена сортируются; имена
+с пробелами берутся в кавычки (`'my docs'`). Скрытые файлы (имя
+начинается с точки) показываются только с `-a`, вместе с `.` и `..`.
+`-l` — подробный формат: тип и права (`drwxr-xr-x` для папок,
+`-rw-r--r--` для файлов — VFS не хранит права), размер в байтах
+(для папок 4096), имя. Для нескольких путей перед содержимым каждой
+папки выводится заголовок `путь:`. Ошибки: `cannot access 'x': No
+such file or directory`.
+
+**`cd`**. Без аргументов — переход в корень VFS `/`. `cd -` —
+переход в предыдущую папку (новый путь выводится, как в bash).
+Текущая папка показывается в приглашении. Ошибки: `No such file or
+directory`, `Not a directory` (путь к файлу), `too many arguments`.
+При ошибке текущая папка не меняется.
+
+**`rev`, `tac`**. Файлы читаются из VFS как текст UTF-8. Стандартного
+ввода в эмуляторе нет, поэтому нужен хотя бы один файл. Ошибки:
+`missing file operand`, `No such file or directory`, `Is a directory`.
+
+**`date`**. Без аргументов — формат GNU date: `Tue Oct  6 19:25:55
+MSK 2026` (если у часового пояса нет короткого имени, как в Windows,
+выводится смещение `+0300`). `-u` — время UTC. `+ФОРМАТ` — свой
+формат с кодами strftime: `date +%Y-%m-%d`, `date "+%H:%M:%S"`.
+Ошибки: `invalid date 'x'` (аргумент без `+`), `extra operand`.
 
 ## Запуск и тесты
 
@@ -181,11 +224,24 @@ Linux / macOS:
 | `examples/test_errors`     | `--help`, неизвестный параметр, параметр без значения, недоступный лог-файл |
 | `examples/test_vfs`        | VFS `minimal`, `several`, `deep`; на `deep` — все команды этапов 1–3 |
 | `examples/test_vfs_errors` | несуществующая папка VFS, файл вместо папки, запуск без `--vfs` |
+| `examples/test_commands`   | все режимы команд этапа 4 (`stage4.txt`), затем каждый сценарий ошибки из `startup/errors/` |
 
-Стартовые скрипты в `examples/startup/`: `demo.txt`, `error.txt`,
-`exit.txt`, `vfs_info.txt` и `stage3.txt` — проверка всех команд
-этапов 1–3 (ошибочная команда в конце, так как скрипт
-останавливается на первой ошибке).
+Стартовые скрипты в `examples/startup/`:
+
+| Скрипт         | Назначение                                             |
+|----------------|--------------------------------------------------------|
+| `demo.txt`     | несколько команд без ошибок                            |
+| `error.txt`    | остановка на ошибке в строке 4                         |
+| `exit.txt`     | завершение эмулятора командой `exit 3`                 |
+| `vfs_info.txt` | вывод `vfs-info`                                       |
+| `stage3.txt`   | команды этапов 1–3                                     |
+| `stage4.txt`   | все режимы `ls`, `cd`, `rev`, `tac`, `date`            |
+| `errors/*.txt` | по одной ошибке в каждом: `ls`, `cd`, `rev`, `tac`, `date` |
+
+Так как стартовый скрипт останавливается на первой ошибке, в каждом
+скрипте ошибочная команда стоит последней, а разные ошибки разнесены
+по отдельным скриптам в `errors/`. Скрипты рассчитаны на запуск с
+`--vfs examples/vfs/deep`.
 
 Каждый запуск открывает окно эмулятора; чтобы перейти к следующей
 проверке, закройте окно или введите `exit`. Журналы пишутся в
@@ -193,25 +249,72 @@ Linux / macOS:
 
 ## Примеры использования
 
-Интерактивная работа:
+Работа с VFS (`run.bat --vfs examples\vfs\deep`):
 
 ```
-vfs:/$ ls -l $HOME
-ls: arguments: ['-l', '/home/user']
-vfs:/$ cd "$HOME/my docs"    # комментарий
-cd: arguments: ['/home/user/my docs']
-vfs:/$ ls '$HOME' \$USER
-ls: arguments: ['$HOME', '$USER']
-vfs:/$ cd a b
-cd: too many arguments
-vfs:/$ foo
-foo: command not found
-vfs:/$ ls 'abc
-parse error: unexpected end of line: unclosed single quote
-vfs:/$ exit abc
-exit: abc: numeric argument required
-vfs:/$ exit
+deep:/$ ls
+etc  home  readme.txt  var
+deep:/$ ls -la home/user
+drwxr-xr-x     4096 .
+drwxr-xr-x     4096 ..
+-rw-r--r--       43 .profile
+drwxr-xr-x     4096 docs
+drwxr-xr-x     4096 'my docs'
+deep:/$ ls /etc /var/log
+/etc:
+app  hostname
+
+/var/log:
+system.log
+deep:/$ cd home/user/docs/drafts
+deep:/home/user/docs/drafts$ cd ../..
+deep:/home/user$ cd "my docs"    # комментарий
+deep:/home/user/my docs$ cd -
+/home/user
+deep:/home/user$ cd
+deep:/$ rev /etc/hostname
+tsoh-rotalume
+deep:/$ tac /var/log/system.log
+2026-10-01 10:01:00 user logged in
+2026-10-01 10:00:05 network up
+2026-10-01 10:00:00 system started
+deep:/$ date
+Tue Oct  6 19:25:55 +0300 2026
+deep:/$ date +%d.%m.%Y
+06.10.2026
 ```
+
+Ошибки:
+
+```
+deep:/$ ls /nope readme.txt
+readme.txt
+ls: cannot access '/nope': No such file or directory
+deep:/$ ls -z
+ls: invalid option -- 'z'
+deep:/$ cd /etc/hostname
+cd: /etc/hostname: Not a directory
+deep:/$ cd a b
+cd: too many arguments
+deep:/$ rev /etc
+rev: /etc: Is a directory
+deep:/$ tac
+tac: missing file operand
+deep:/$ date tomorrow
+date: invalid date 'tomorrow'
+deep:/$ foo
+foo: command not found
+deep:/$ ls 'abc
+parse error: unexpected end of line: unclosed single quote
+deep:/$ exit abc
+exit: abc: numeric argument required
+deep:/$ exit
+```
+
+Переменные окружения реальной ОС раскрываются парсером, например
+`date "+%H:%M $USERNAME"` в Windows или `date "+%H:%M $USER"` в Linux.
+Неизвестная переменная заменяется пустой строкой:
+`ls "$NO_SUCH_VAR/etc"` выводит содержимое `/etc`.
 
 Информация о VFS (`run.bat --vfs examples\vfs\deep`):
 
@@ -237,11 +340,10 @@ vfs-info: no VFS loaded (use --vfs PATH)
 
 ```
 --- startup script: examples/startup/error.txt ---
-vfs:/$ ls -a
-ls: arguments: ['-a']
-vfs:/$ cd /home
-cd: arguments: ['/home']
-vfs:/$ cd too many
+deep:/$ ls -a
+.  ..  etc  home  readme.txt  var
+deep:/$ cd /home
+deep:/home$ cd too many
 cd: too many arguments
 --- script stopped: error at line 4 ---
 ```
@@ -250,10 +352,7 @@ cd: too many arguments
 
 ```
 date,time,command,arguments,status,error
-2026-10-06,18:34:28,ls,-a,ok,
-2026-10-06,18:34:28,cd,/home,ok,
-2026-10-06,18:34:28,cd,too many,error,cd: too many arguments
+2026-10-06,19:30:12,ls,-a,ok,
+2026-10-06,19:30:12,cd,/home,ok,
+2026-10-06,19:30:12,cd,too many,error,cd: too many arguments
 ```
-
-В Windows вместо `$HOME` можно использовать `$USERPROFILE`,
-`$USERNAME` или `$OS`.

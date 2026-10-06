@@ -1,0 +1,4 @@
+# Ошибка tac: файла нет (остановка на строке 3).
+tac /var/log/system.log
+tac /var/log/missing.log
+ls never-run

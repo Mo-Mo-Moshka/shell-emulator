@@ -4,6 +4,8 @@ import os
 import tempfile
 import unittest
 
+from helpers import make_vfs
+
 from emulator.commands import CommandResult
 from emulator.script import ScriptError, read_script, run_script
 from emulator.shell import Shell
@@ -15,7 +17,7 @@ class RunScriptTest(unittest.TestCase):
     def setUp(self):
         """Подготовить список выполненных строк."""
         self.executed = []
-        self.shell = Shell()
+        self.shell = Shell(vfs=make_vfs())
 
     def run_line(self, line):
         """Выполнить строку и запомнить её."""

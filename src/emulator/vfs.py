@@ -18,7 +18,11 @@ from typing import Dict, Union
 
 ROOT_PATH = "/"
 SEPARATOR = "/"
+CURRENT_DIR = "."
+PARENT_DIR = ".."
 PATH_ENCODING = "utf-8"
+NO_SUCH_FILE = "No such file or directory"
+NOT_A_DIRECTORY = "Not a directory"
 
 
 class VfsError(Exception):
@@ -63,6 +67,29 @@ class Vfs:
         self.root = root
         self.source = source
 
+    def lookup(self, path, cwd=ROOT_PATH):
+        """Найти узел по пути и вернуть пару (абсолютный путь, узел).
+
+        path может быть абсолютным (``/etc``) или относительным
+        текущей папки cwd; поддерживаются ``.`` и ``..`` (выше
+        корня подняться нельзя). Бросает VfsError с текстом
+        ``No such file or directory`` или ``Not a directory``.
+        """
+        if not path.startswith(SEPARATOR):
+            path = cwd + SEPARATOR + path
+        names, nodes = [], [self.root]
+        for part in path.split(SEPARATOR):
+            if part in ("", CURRENT_DIR):
+                continue
+            if part == PARENT_DIR:
+                if names:
+                    names.pop()
+                    nodes.pop()
+                continue
+            nodes.append(_child(nodes[-1], part))
+            names.append(part)
+        return SEPARATOR + SEPARATOR.join(names), nodes[-1]
+
     def walk(self):
         """Обойти все узлы VFS: пары (путь, узел) в порядке имён."""
         yield ROOT_PATH, self.root
@@ -91,6 +118,15 @@ class Vfs:
             elif node is not self.root:
                 stats.directories += 1
         return stats
+
+
+def _child(node, name):
+    """Вернуть вложенный узел name папки node."""
+    if not isinstance(node, VfsDir):
+        raise VfsError(NOT_A_DIRECTORY)
+    if name not in node.children:
+        raise VfsError(NO_SUCH_FILE)
+    return node.children[name]
 
 
 def _walk_children(directory, prefix):

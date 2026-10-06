@@ -1,11 +1,18 @@
 """Ядро эмулятора: выполнение строк команд независимо от интерфейса."""
 
 import shlex
+from datetime import datetime
 
 from emulator.commands import COMMANDS, CommandError, CommandResult
 from emulator.config import DEFAULT_VFS_NAME
 from emulator.logger import NullLogger
 from emulator.parser import ParseError, parse
+from emulator.vfs import ROOT_PATH
+
+
+def local_now():
+    """Текущие дата и время с локальным часовым поясом."""
+    return datetime.now().astimezone()
 
 
 class Shell:
@@ -19,8 +26,10 @@ class Shell:
         """
         self.vfs_name = vfs.name if vfs is not None else vfs_name
         self.vfs = vfs
-        self.cwd = "/"
+        self.cwd = ROOT_PATH
+        self.previous_cwd = ROOT_PATH
         self.logger = logger if logger is not None else NullLogger()
+        self.clock = local_now
 
     @property
     def prompt(self):

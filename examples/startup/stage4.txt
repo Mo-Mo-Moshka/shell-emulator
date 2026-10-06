@@ -1,0 +1,45 @@
+# Проверка команд этапа 4 (запускать с --vfs examples/vfs/deep).
+# Скрипт останавливается на первой ошибке, поэтому ошибочная команда
+# стоит последней. Другие ошибки - в examples/startup/errors/.
+
+# ls: текущая папка, путь, скрытые файлы, подробный формат
+ls
+ls -a /home/user
+ls -l /etc
+ls -la home/user
+ls /etc /var/log
+ls /etc/hostname
+
+# cd: относительные и абсолютные пути, .., cd -, cd без аргументов
+cd home/user
+ls
+cd docs/drafts
+ls -l
+cd ../..
+cd "my docs"
+ls -l
+cd -
+cd /var/./log/
+ls
+cd
+
+# rev: символы каждой строки в обратном порядке
+rev /etc/hostname
+rev "/home/user/my docs/отчёт.txt"
+
+# tac: строки файла в обратном порядке, несколько файлов
+tac /var/log/system.log
+tac etc/hostname home/user/docs/drafts/plan.txt
+
+# date: формат по умолчанию, UTC, свой формат
+date
+date -u
+date +%Y-%m-%d
+date "+%H:%M:%S %d.%m.%Y"
+
+# Переменные окружения реальной ОС: неизвестная переменная пуста
+ls "$EMU_UNDEFINED_VARIABLE/etc"
+
+# Ошибка: tac без имени файла
+tac
+date this-command-is-never-run

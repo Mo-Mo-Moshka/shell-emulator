@@ -1,0 +1,4 @@
+# Ошибка rev: папка вместо файла (остановка на строке 3).
+rev /etc/hostname
+rev /etc
+ls never-run

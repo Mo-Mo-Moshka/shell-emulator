@@ -1,0 +1,4 @@
+# Ошибка date: неверный аргумент (остановка на строке 3).
+date +%Y
+date tomorrow
+ls never-run

@@ -1,0 +1,4 @@
+# Ошибка ls: путь не существует (остановка на строке 3).
+ls /home
+ls /home/nobody
+ls never-run

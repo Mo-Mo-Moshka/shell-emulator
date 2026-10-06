@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from datetime import datetime
 
+from helpers import make_vfs
+
 from emulator.logger import LOG_FIELDS, CsvLogger
 from emulator.shell import Shell
 
@@ -71,7 +73,7 @@ class ShellLoggingTest(unittest.TestCase):
     def setUp(self):
         """Создать сеанс с журналом-шпионом."""
         self.events = []
-        self.shell = Shell("vfs", logger=self)
+        self.shell = Shell(logger=self, vfs=make_vfs())
 
     def log(self, command, arguments, error=""):
         """Запомнить событие вместо записи в файл."""
@@ -79,10 +81,10 @@ class ShellLoggingTest(unittest.TestCase):
 
     def test_logs_every_command(self):
         """Успешные и ошибочные вызовы попадают в журнал."""
-        self.shell.execute("ls -l 'my dir'")
+        self.shell.execute("ls -l 'docs/my notes.txt'")
         self.shell.execute("foo")
         self.assertEqual(self.events, [
-            ("ls", "-l 'my dir'", ""),
+            ("ls", "-l 'docs/my notes.txt'", ""),
             ("foo", "", "foo: command not found"),
         ])
 
