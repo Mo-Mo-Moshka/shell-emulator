@@ -24,3 +24,6 @@ Thumbs.db
 
 # Assignment materials
 *.pdf
+
+# Emulator logs
+logs/

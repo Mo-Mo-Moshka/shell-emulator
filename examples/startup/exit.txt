@@ -1,0 +1,5 @@
+# Скрипт завершает эмулятор командой exit с кодом 3.
+ls
+cd /
+exit 3
+ls this-command-is-never-run

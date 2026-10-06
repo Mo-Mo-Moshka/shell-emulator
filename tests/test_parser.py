@@ -56,6 +56,16 @@ class ParseTest(unittest.TestCase):
         """Знак $ без имени остаётся как есть."""
         self.assertEqual(parse("ls $ a$"), ["ls", "$", "a$"])
 
+    def test_comments(self):
+        """# в начале слова открывает комментарий до конца строки."""
+        self.assertEqual(parse("# only comment"), [])
+        self.assertEqual(parse("ls -a  # list all"), ["ls", "-a"])
+
+    def test_hash_inside_word_or_quotes(self):
+        """# внутри слова или в кавычках — обычный символ."""
+        self.assertEqual(parse("ls a#b '#c' \\#d"),
+                         ["ls", "a#b", "#c", "#d"])
+
     def test_unclosed_single_quote(self):
         """Незакрытая одинарная кавычка — ошибка."""
         with self.assertRaisesRegex(ParseError, "single quote"):

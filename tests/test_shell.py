@@ -1,6 +1,7 @@
 """Тесты выполнения команд и графического окна."""
 
 import os
+import tempfile
 import tkinter as tk
 import unittest
 from unittest import mock
@@ -118,6 +119,26 @@ class TerminalWindowTest(unittest.TestCase):
         text = self.window.output.get("1.0", "end")
         self.assertIn("my_vfs:/$ ls -a", text)
         self.assertIn("ls: arguments: ['-a']", text)
+
+    def test_startup_script_shows_dialog(self):
+        """Скрипт показывает ввод и вывод и останавливается на ошибке."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "start.txt")
+            with open(path, "w", encoding="utf-8") as file:
+                file.write("ls -a\ncd a b\nls never\n")
+            outcome = self.window.run_script_file(path)
+        text = self.window.output.get("1.0", "end")
+        self.assertEqual(outcome.failed_line, 2)
+        self.assertIn("my_vfs:/$ ls -a\nls: arguments: ['-a']", text)
+        self.assertIn("cd: too many arguments", text)
+        self.assertIn("script stopped: error at line 2", text)
+        self.assertNotIn("never", text)
+
+    def test_missing_startup_script(self):
+        """Ошибка чтения скрипта выводится в окне."""
+        self.assertIsNone(self.window.run_script_file("no/such/file.txt"))
+        text = self.window.output.get("1.0", "end")
+        self.assertIn("startup script: cannot read", text)
 
     def test_error_is_highlighted(self):
         """Текст ошибки выделяется тегом error."""

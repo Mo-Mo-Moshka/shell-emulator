@@ -7,6 +7,8 @@
 import tkinter as tk
 from tkinter import scrolledtext
 
+from emulator.script import ScriptError, read_script, run_script
+
 WINDOW_TITLE = "Shell Emulator"
 WINDOW_SIZE = "800x500"
 FONT = "TkFixedFont"
@@ -14,6 +16,7 @@ BG_COLOR = "#1e1e1e"
 FG_COLOR = "#d4d4d4"
 PROMPT_COLOR = "#6a9955"
 ERROR_COLOR = "#f48771"
+DEBUG_COLOR = "#808080"
 WELCOME = "Shell Emulator. Type 'exit' to quit.\n"
 
 
@@ -42,6 +45,7 @@ class TerminalWindow:
         )
         self.output.tag_configure("prompt", foreground=PROMPT_COLOR)
         self.output.tag_configure("error", foreground=ERROR_COLOR)
+        self.output.tag_configure("debug", foreground=DEBUG_COLOR)
         self.output.pack(fill="both", expand=True)
 
     def _build_input(self):
@@ -84,6 +88,30 @@ class TerminalWindow:
             self.exit_code = result.exit_code
             self.root.destroy()
         return result
+
+    def write_lines(self, lines, tag=()):
+        """Вывести список строк, каждую с новой строки."""
+        for line in lines:
+            self.write(line + "\n", tag)
+
+    def run_script_file(self, path):
+        """Выполнить стартовый скрипт, показывая ввод и вывод.
+
+        Возвращает ScriptOutcome или None, если скрипт не прочитан.
+        """
+        try:
+            lines = read_script(path)
+        except ScriptError as error:
+            self.write(f"startup script: {error}\n", "error")
+            return None
+        self.write(f"--- startup script: {path} ---\n", "debug")
+        outcome = run_script(lines, self.run_line)
+        if outcome.failed_line is not None:
+            self.write(f"--- script stopped: error at line "
+                       f"{outcome.failed_line} ---\n", "error")
+        elif not outcome.exited:
+            self.write("--- startup script finished ---\n", "debug")
+        return outcome
 
     def mainloop(self):
         """Запустить цикл обработки событий окна."""

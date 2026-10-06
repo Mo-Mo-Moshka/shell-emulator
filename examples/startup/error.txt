@@ -1,0 +1,5 @@
+# Скрипт с ошибкой: выполнение остановится на строке 4.
+ls -a
+cd /home
+cd too many
+ls this-command-is-never-run

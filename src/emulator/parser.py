@@ -6,11 +6,14 @@
 * ``'...'`` — текст берётся как есть, переменные не раскрываются;
 * ``"..."`` — переменные раскрываются, пробелы сохраняются;
 * ``\\x`` — символ ``x`` берётся буквально;
-* ``$NAME`` и ``${NAME}`` — подстановка переменной окружения реальной ОС.
+* ``$NAME`` и ``${NAME}`` — подстановка переменной окружения реальной ОС;
+* ``# ...`` — комментарий до конца строки.
 """
 
 import os
 import re
+
+COMMENT = "#"
 
 _TOKEN_RE = re.compile(
     r"""
@@ -57,6 +60,8 @@ def parse(line):
         if kind == "space":
             _flush_word(words, parts, quoted)
             parts, quoted = [], False
+        elif _starts_comment(kind, match.group(kind), parts):
+            break
         else:
             parts.append(_expand_part(kind, match.group(kind)))
             quoted = quoted or kind != "plain"
@@ -101,6 +106,15 @@ def _expand_part(kind, value):
     if kind == "plain":
         return expand_variables(value)
     return value
+
+
+def _starts_comment(kind, value, parts):
+    """Истина, если фрагмент начинает комментарий.
+
+    Как в sh, ``#`` открывает комментарий только в начале слова и
+    только вне кавычек: в ``a#b`` и ``'#x'`` это обычный символ.
+    """
+    return kind == "plain" and not parts and value.startswith(COMMENT)
 
 
 def _flush_word(words, parts, quoted):
