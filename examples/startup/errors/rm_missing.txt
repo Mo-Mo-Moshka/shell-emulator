@@ -1,0 +1,4 @@
+# Ошибка rm: файла нет (остановка на строке 3).
+rm -f /no/such/file.txt
+rm /no/such/file.txt
+ls never-run

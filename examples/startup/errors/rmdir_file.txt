@@ -1,0 +1,4 @@
+# Ошибка rmdir: путь указывает на файл (остановка на строке 3).
+ls /etc
+rmdir /etc/hostname
+ls never-run

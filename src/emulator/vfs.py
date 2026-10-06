@@ -3,6 +3,7 @@
 Источник VFS — папка на диске пользователя. При загрузке вся папка
 (структура и содержимое файлов) читается в память; дальше эмулятор
 работает только с копией в памяти и никогда не меняет данные на диске.
+Команды rm и rmdir удаляют узлы только из копии в памяти.
 
 Хеш SHA-256 вычисляется по данным VFS в памяти: обходятся все узлы
 в порядке сортировки имён, для каждой папки хешируется
@@ -90,6 +91,17 @@ class Vfs:
             names.append(part)
         return SEPARATOR + SEPARATOR.join(names), nodes[-1]
 
+    def remove(self, full_path):
+        """Удалить узел по абсолютному пути (только в памяти).
+
+        Корень удалить нельзя: бросает VfsError.
+        """
+        parent_path, name = split_path(full_path)
+        if not name:
+            raise VfsError("cannot remove the root directory")
+        _path, parent = self.lookup(parent_path)
+        del parent.children[name]
+
     def walk(self):
         """Обойти все узлы VFS: пары (путь, узел) в порядке имён."""
         yield ROOT_PATH, self.root
@@ -118,6 +130,22 @@ class Vfs:
             elif node is not self.root:
                 stats.directories += 1
         return stats
+
+
+def split_path(full_path):
+    """Разделить абсолютный путь на (путь родителя, имя).
+
+    Для корня возвращает (``/``, пустая строка).
+    """
+    parent, _sep, name = full_path.rstrip(SEPARATOR).rpartition(SEPARATOR)
+    return parent or ROOT_PATH, name
+
+
+def is_inside(path, ancestor):
+    """Истина, если path совпадает с ancestor или лежит внутри него."""
+    if ancestor == ROOT_PATH:
+        return True
+    return path == ancestor or path.startswith(ancestor + SEPARATOR)
 
 
 def _child(node, name):

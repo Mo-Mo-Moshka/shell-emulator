@@ -1,0 +1,41 @@
+# Проверка команд этапа 5: rm и rmdir (запускать с --vfs examples/vfs/deep).
+# Все изменения выполняются только в памяти: файлы на диске не меняются.
+# Ошибочная команда стоит последней; другие ошибки - в startup/errors/rm*.
+
+# Хеш VFS до изменений
+vfs-info
+
+# rm: один файл, несколько файлов, -v (вывод удалённого)
+ls /etc
+rm /etc/hostname
+ls /etc
+rm -v readme.txt "home/user/my docs/отчёт.txt"
+
+# rm -f: несуществующий путь пропускается без ошибки
+rm -f /no/such/file.txt
+
+# rm -d: пустая папка
+rm -dv "home/user/my docs"
+
+# rmdir: папка, опустевшая после удаления файлов
+rm home/user/docs/drafts/plan.txt
+rmdir -v home/user/docs/drafts
+ls home/user/docs
+
+# rmdir -p: папка вместе с опустевшими родителями
+rm /var/log/system.log
+rmdir -pv var/log
+ls -a /
+
+# rm -r: папка со всем содержимым, путь относительно текущей папки
+cd /home
+rm -rv user
+ls -a
+cd /
+
+# Хеш изменился: VFS в памяти отличается от папки на диске
+vfs-info
+
+# Ошибка: rmdir непустой папки
+rmdir /etc
+ls this-command-is-never-run

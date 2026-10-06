@@ -19,6 +19,8 @@
    в памяти, служебная команда `vfs-info`.
 4. **Основные команды** — настоящие `ls` и `cd`, новые команды `rev`,
    `date`, `tac`.
+5. **Дополнительные команды** — `rm` и `rmdir`, изменяющие VFS только
+   в памяти.
 
 ## Структура репозитория
 
@@ -32,6 +34,7 @@ src/
       base.py           результат, ошибки, разбор опций, доступ к VFS
       navigation.py     ls, cd
       text.py           rev, tac
+      modify.py         rm, rmdir
       system.py         exit, date, vfs-info
     shell.py            ядро: выполнение строки, приглашение, журнал
     logger.py           журнал вызовов команд (CSV)
@@ -152,6 +155,8 @@ VFS не удалось загрузить, ошибка выводится кр
 | `rev файл...`             | строки файлов с символами в обратном порядке  |
 | `tac файл...`             | строки каждого файла в обратном порядке       |
 | `date [-u] [+ФОРМАТ]`     | текущие дата и время                          |
+| `rm [-rRfdv] путь...`     | удалить файлы и папки (только в памяти)       |
+| `rmdir [-pv] папка...`    | удалить пустые папки (только в памяти)        |
 | `exit [N]`                | закрыть эмулятор с кодом `N` (по умолчанию 0) |
 | `vfs-info`                | служебная: имя VFS, путь-источник, хеш SHA-256, число папок и файлов, размер |
 
@@ -192,6 +197,28 @@ MSK 2026` (если у часового пояса нет короткого и�
 формат с кодами strftime: `date +%Y-%m-%d`, `date "+%H:%M:%S"`.
 Ошибки: `invalid date 'x'` (аргумент без `+`), `extra operand`.
 
+**`rm`, `rmdir`** изменяют только VFS в памяти: папка на диске
+остаётся прежней, а хеш в `vfs-info` после удаления меняется.
+
+`rm` удаляет файлы. Опции: `-r`/`-R` — папки со всем содержимым,
+`-d` — пустые папки, `-f` — молча пропускать несуществующие пути
+(и не требовать аргументов), `-v` — выводить каждый удалённый файл и
+папку (`removed 'x'`, `removed directory 'x'`). Ошибки: `missing
+operand`, `cannot remove 'x': No such file or directory`, `Is a
+directory` (папка без `-r`/`-d`), `Directory not empty` (`-d` для
+непустой папки), `it is dangerous to operate recursively on '/'`
+(`rm -r /`), `refusing to remove '.' or '..' directory`,
+`Device or resource busy` (текущая папка или папка, в которой она
+лежит).
+
+`rmdir` удаляет пустые папки. Опции: `-p` — также удалить
+родительские папки из пути, если они стали пустыми (`rmdir -p a/b/c`
+удаляет `a/b/c`, `a/b`, `a`; останавливается на первой непустой),
+`-v` — выводить каждую удалённую папку. Ошибки: `missing operand`,
+`failed to remove 'x': Directory not empty`, `Not a directory`,
+`No such file or directory`, `Invalid argument` (`.` и `..`),
+`Device or resource busy` (текущая папка и корень).
+
 ## Запуск и тесты
 
 Требуется Python 3.8+ с модулем tkinter (входит в стандартную
@@ -225,6 +252,7 @@ Linux / macOS:
 | `examples/test_vfs`        | VFS `minimal`, `several`, `deep`; на `deep` — все команды этапов 1–3 |
 | `examples/test_vfs_errors` | несуществующая папка VFS, файл вместо папки, запуск без `--vfs` |
 | `examples/test_commands`   | все режимы команд этапа 4 (`stage4.txt`), затем каждый сценарий ошибки из `startup/errors/` |
+| `examples/test_modify`     | все режимы `rm` и `rmdir` (`stage5.txt`), сценарии ошибок `startup/errors/rm*.txt`, затем список файлов VFS на диске — они не изменились |
 
 Стартовые скрипты в `examples/startup/`:
 
@@ -236,7 +264,8 @@ Linux / macOS:
 | `vfs_info.txt` | вывод `vfs-info`                                       |
 | `stage3.txt`   | команды этапов 1–3                                     |
 | `stage4.txt`   | все режимы `ls`, `cd`, `rev`, `tac`, `date`            |
-| `errors/*.txt` | по одной ошибке в каждом: `ls`, `cd`, `rev`, `tac`, `date` |
+| `stage5.txt`   | все режимы `rm` и `rmdir`, хеш VFS до и после изменений |
+| `errors/*.txt` | по одной ошибке в каждом: `ls`, `cd`, `rev`, `tac`, `date`, `rm`, `rmdir` |
 
 Так как стартовый скрипт останавливается на первой ошибке, в каждом
 скрипте ошибочная команда стоит последней, а разные ошибки разнесены
@@ -327,6 +356,37 @@ content: 9 directories, 8 files, 448 bytes
 deep:/$ vfs-info --verbose
 vfs-info: too many arguments
 ```
+
+Изменение VFS в памяти (`rm`, `rmdir`):
+
+```
+deep:/$ rm -v readme.txt /etc/hostname
+removed 'readme.txt'
+removed '/etc/hostname'
+deep:/$ rm /var/log/system.log
+deep:/$ rmdir -pv var/log
+rmdir: removing directory, 'var/log'
+rmdir: removing directory, 'var'
+deep:/$ rm -rv /home/user/docs
+removed '/home/user/docs/drafts/plan.txt'
+removed directory '/home/user/docs/drafts'
+removed '/home/user/docs/report.txt'
+removed directory '/home/user/docs'
+deep:/$ ls -a /
+.  ..  etc  home
+deep:/$ rm /etc
+rm: cannot remove '/etc': Is a directory
+deep:/$ rmdir /etc
+rmdir: failed to remove '/etc': Directory not empty
+deep:/$ cd /home/user
+deep:/home/user$ rm -r /home
+rm: cannot remove '/home': Device or resource busy
+deep:/home/user$ rm -r /
+rm: it is dangerous to operate recursively on '/'
+```
+
+После выхода из эмулятора все файлы в `examples/vfs/deep` на диске
+остаются на месте.
 
 Ошибка загрузки VFS (`--vfs examples\vfs\no_such_vfs`):
 

@@ -1,0 +1,4 @@
+# Ошибка rmdir: папка не пуста (остановка на строке 3).
+ls /home
+rmdir /home
+ls never-run

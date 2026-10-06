@@ -1,0 +1,4 @@
+# Ошибка rm: папка без -r (остановка на строке 3).
+rm /etc/hostname
+rm /etc
+ls never-run
