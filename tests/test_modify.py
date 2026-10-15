@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from functools import cached_property
 
 from helpers import make_vfs
 
@@ -32,9 +33,10 @@ class SplitPathTest(unittest.TestCase):
 class RmTest(unittest.TestCase):
     """Проверки команды rm."""
 
-    def setUp(self):
-        """Создать сеанс с VFS."""
-        self.shell = Shell(vfs=make_vfs())
+    @cached_property
+    def shell(self):
+        """Сеанс с VFS (новый в каждом тесте)."""
+        return Shell(vfs=make_vfs())
 
     def test_removes_files(self):
         """rm удаляет один или несколько файлов."""
@@ -113,9 +115,10 @@ class RmTest(unittest.TestCase):
 class RmdirTest(unittest.TestCase):
     """Проверки команды rmdir."""
 
-    def setUp(self):
-        """Создать сеанс с VFS."""
-        self.shell = Shell(vfs=make_vfs())
+    @cached_property
+    def shell(self):
+        """Сеанс с VFS (новый в каждом тесте)."""
+        return Shell(vfs=make_vfs())
 
     def test_removes_empty_directory(self):
         """rmdir удаляет пустую папку."""

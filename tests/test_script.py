@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from functools import cached_property
 
 from helpers import make_vfs
 
@@ -14,10 +15,15 @@ from emulator.shell import Shell
 class RunScriptTest(unittest.TestCase):
     """Проверки run_script."""
 
-    def setUp(self):
-        """Подготовить список выполненных строк."""
-        self.executed = []
-        self.shell = Shell(vfs=make_vfs())
+    @cached_property
+    def executed(self):
+        """Список выполненных строк."""
+        return []
+
+    @cached_property
+    def shell(self):
+        """Сеанс с VFS (новый в каждом тесте)."""
+        return Shell(vfs=make_vfs())
 
     def run_line(self, line):
         """Выполнить строку и запомнить её."""
@@ -58,14 +64,17 @@ class RunScriptTest(unittest.TestCase):
 class ReadScriptTest(unittest.TestCase):
     """Проверки read_script."""
 
-    def setUp(self):
-        """Создать временную папку."""
-        self.tmp = tempfile.TemporaryDirectory()
-        self.path = os.path.join(self.tmp.name, "start.txt")
+    @cached_property
+    def tmp(self):
+        """Временная папка, удаляется после теста."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        return tmp
 
-    def tearDown(self):
-        """Удалить временную папку."""
-        self.tmp.cleanup()
+    @property
+    def path(self):
+        """Путь к файлу скрипта во временной папке."""
+        return os.path.join(self.tmp.name, "start.txt")
 
     def write(self, data):
         """Записать байты в файл скрипта."""

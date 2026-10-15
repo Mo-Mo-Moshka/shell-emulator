@@ -1,6 +1,7 @@
 """Тесты команд ls и cd, а также поиска путей в VFS."""
 
 import unittest
+from functools import cached_property
 
 from helpers import make_vfs
 
@@ -11,9 +12,10 @@ from emulator.vfs import VfsError
 class LookupTest(unittest.TestCase):
     """Проверки Vfs.lookup."""
 
-    def setUp(self):
-        """Создать VFS для тестов."""
-        self.vfs = make_vfs()
+    @cached_property
+    def vfs(self):
+        """VFS для тестов (новая в каждом тесте)."""
+        return make_vfs()
 
     def test_absolute_and_relative_paths(self):
         """Абсолютные и относительные пути, . и .. нормализуются."""
@@ -39,9 +41,10 @@ class LookupTest(unittest.TestCase):
 class LsTest(unittest.TestCase):
     """Проверки команды ls."""
 
-    def setUp(self):
-        """Создать сеанс с VFS."""
-        self.shell = Shell(vfs=make_vfs())
+    @cached_property
+    def shell(self):
+        """Сеанс с VFS (новый в каждом тесте)."""
+        return Shell(vfs=make_vfs())
 
     def ls(self, line):
         """Выполнить ls и вернуть (вывод, ошибка)."""
@@ -106,9 +109,10 @@ class LsTest(unittest.TestCase):
 class CdTest(unittest.TestCase):
     """Проверки команды cd."""
 
-    def setUp(self):
-        """Создать сеанс с VFS."""
-        self.shell = Shell(vfs=make_vfs())
+    @cached_property
+    def shell(self):
+        """Сеанс с VFS (новый в каждом тесте)."""
+        return Shell(vfs=make_vfs())
 
     def test_relative_and_parent(self):
         """Переход по относительным путям и на уровень выше."""

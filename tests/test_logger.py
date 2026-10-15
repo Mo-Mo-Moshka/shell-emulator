@@ -4,6 +4,7 @@ import csv
 import os
 import tempfile
 import unittest
+from functools import cached_property
 from datetime import datetime
 
 from helpers import make_vfs
@@ -23,14 +24,17 @@ def read_rows(path):
 class CsvLoggerTest(unittest.TestCase):
     """Проверки CsvLogger."""
 
-    def setUp(self):
-        """Создать временную папку для журналов."""
-        self.tmp = tempfile.TemporaryDirectory()
-        self.path = os.path.join(self.tmp.name, "logs", "log.csv")
+    @cached_property
+    def tmp(self):
+        """Временная папка, удаляется после теста."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        return tmp
 
-    def tearDown(self):
-        """Удалить временную папку."""
-        self.tmp.cleanup()
+    @property
+    def path(self):
+        """Путь к журналу во временной папке."""
+        return os.path.join(self.tmp.name, "logs", "log.csv")
 
     def make_logger(self):
         """Создать журнал с фиксированным временем."""
@@ -70,10 +74,15 @@ class CsvLoggerTest(unittest.TestCase):
 class ShellLoggingTest(unittest.TestCase):
     """Проверки журналирования в Shell."""
 
-    def setUp(self):
-        """Создать сеанс с журналом-шпионом."""
-        self.events = []
-        self.shell = Shell(logger=self, vfs=make_vfs())
+    @cached_property
+    def events(self):
+        """Записанные события журнала."""
+        return []
+
+    @cached_property
+    def shell(self):
+        """Сеанс с журналом-шпионом (сам тест)."""
+        return Shell(logger=self, vfs=make_vfs())
 
     def log(self, command, arguments, error=""):
         """Запомнить событие вместо записи в файл."""

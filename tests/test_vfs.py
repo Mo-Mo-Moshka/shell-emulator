@@ -5,6 +5,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from functools import cached_property
 
 from emulator.shell import Shell
 from emulator.vfs import Vfs, VfsDir, VfsError, VfsFile, load_vfs
@@ -30,18 +31,21 @@ def depth(vfs):
 class LoadVfsTest(unittest.TestCase):
     """Проверки загрузки VFS из папки на диске."""
 
-    def setUp(self):
-        """Создать на диске папку с деревом файлов."""
-        self.tmp = tempfile.TemporaryDirectory()
-        self.source = os.path.join(self.tmp.name, "my_vfs")
-        write_file(os.path.join(self.source, "a.txt"), b"hello\n")
-        write_file(os.path.join(self.source, "bin", "data.bin"),
-                   BINARY_DATA)
-        os.makedirs(os.path.join(self.source, "empty"))
+    @cached_property
+    def tmp(self):
+        """Временная папка, удаляется после теста."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        return tmp
 
-    def tearDown(self):
-        """Удалить временную папку."""
-        self.tmp.cleanup()
+    @cached_property
+    def source(self):
+        """Папка на диске с деревом файлов для загрузки."""
+        source = os.path.join(self.tmp.name, "my_vfs")
+        write_file(os.path.join(source, "a.txt"), b"hello\n")
+        write_file(os.path.join(source, "bin", "data.bin"), BINARY_DATA)
+        os.makedirs(os.path.join(source, "empty"))
+        return source
 
     def test_loads_structure_and_data(self):
         """Папки, файлы и их содержимое (в том числе двоичное) в памяти."""
@@ -138,10 +142,15 @@ class ExampleVfsTest(unittest.TestCase):
 class VfsInfoCommandTest(unittest.TestCase):
     """Проверки служебной команды vfs-info."""
 
-    def setUp(self):
-        """Загрузить минимальную VFS из примеров."""
-        self.vfs = load_vfs(os.path.join(EXAMPLES, "minimal"))
-        self.shell = Shell("ignored", vfs=self.vfs)
+    @cached_property
+    def vfs(self):
+        """Минимальная VFS из примеров."""
+        return load_vfs(os.path.join(EXAMPLES, "minimal"))
+
+    @cached_property
+    def shell(self):
+        """Сеанс с минимальной VFS."""
+        return Shell("ignored", vfs=self.vfs)
 
     def test_prints_name_and_hash(self):
         """vfs-info выводит имя VFS и её хеш SHA-256."""

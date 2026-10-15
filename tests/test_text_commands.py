@@ -1,6 +1,7 @@
 """Тесты команд rev, tac и date, а также разбора опций."""
 
 import unittest
+from functools import cached_property
 from datetime import datetime, timedelta, timezone
 
 from helpers import make_vfs
@@ -34,9 +35,10 @@ class ParseOptionsTest(unittest.TestCase):
 class RevTacTest(unittest.TestCase):
     """Проверки rev и tac."""
 
-    def setUp(self):
-        """Создать сеанс с VFS."""
-        self.shell = Shell(vfs=make_vfs())
+    @cached_property
+    def shell(self):
+        """Сеанс с VFS (новый в каждом тесте)."""
+        return Shell(vfs=make_vfs())
 
     def test_rev(self):
         """rev переворачивает символы каждой строки."""
@@ -85,10 +87,12 @@ class RevTacTest(unittest.TestCase):
 class DateTest(unittest.TestCase):
     """Проверки date с фиксированными часами."""
 
-    def setUp(self):
-        """Создать сеанс с подменёнными часами."""
-        self.shell = Shell()
-        self.shell.clock = lambda: FIXED_NOW
+    @cached_property
+    def shell(self):
+        """Сеанс с подменёнными часами."""
+        shell = Shell()
+        shell.clock = lambda: FIXED_NOW
+        return shell
 
     def date(self, line):
         """Выполнить date и вернуть (вывод, ошибка)."""

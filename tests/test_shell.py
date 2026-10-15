@@ -4,6 +4,7 @@ import os
 import tempfile
 import tkinter as tk
 import unittest
+from functools import cached_property
 from unittest import mock
 
 from helpers import make_vfs
@@ -12,12 +13,21 @@ from emulator.gui import TerminalWindow
 from emulator.shell import Shell
 
 
+def destroy_quietly(root):
+    """Закрыть окно tkinter, если оно ещё открыто."""
+    try:
+        root.destroy()
+    except tk.TclError:
+        pass
+
+
 class ShellTest(unittest.TestCase):
     """Проверки класса Shell и команды exit."""
 
-    def setUp(self):
-        """Создать новый сеанс для каждого теста."""
-        self.shell = Shell(vfs=make_vfs())
+    @cached_property
+    def shell(self):
+        """Сеанс с VFS (новый в каждом тесте)."""
+        return Shell(vfs=make_vfs())
 
     def test_prompt_contains_vfs_name(self):
         """Приглашение содержит имя VFS."""
@@ -78,22 +88,21 @@ class ShellTest(unittest.TestCase):
 class TerminalWindowTest(unittest.TestCase):
     """Проверки окна; пропускаются, если нет графической среды."""
 
-    def setUp(self):
-        """Создать скрытое окно tkinter."""
+    @cached_property
+    def window(self):
+        """Скрытое окно tkinter; закрывается после теста."""
         try:
-            self.root = tk.Tk()
+            root = tk.Tk()
         except tk.TclError as error:
             self.skipTest(f"no display: {error}")
-        self.root.withdraw()
-        self.window = TerminalWindow(Shell(vfs=make_vfs("my_vfs")),
-                                     self.root)
+        root.withdraw()
+        self.addCleanup(destroy_quietly, root)
+        return TerminalWindow(Shell(vfs=make_vfs("my_vfs")), root)
 
-    def tearDown(self):
-        """Закрыть окно, если оно ещё открыто."""
-        try:
-            self.root.destroy()
-        except tk.TclError:
-            pass
+    @property
+    def root(self):
+        """Корневой объект tkinter окна."""
+        return self.window.root
 
     def test_exit_closes_window(self):
         """Команда exit закрывает окно и запоминает код завершения."""
